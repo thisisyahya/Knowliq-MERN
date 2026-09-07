@@ -1,0 +1,4 @@
+"Teach Me" (Feynman) Mode: The user explains a topic to the AI, and the AI acts as a student, pointing out gaps or flaws in the user's logic.
+
+during uploading file, add an option which redirtcs user wiht prommpt to gemini (se pro version, and upload this pdf with this prompt to generate pdf papers from this book and upload those papers here) 
+what if user prompt is changed before feeding to AI, then it will work much better rather than definifng rules in system prompt

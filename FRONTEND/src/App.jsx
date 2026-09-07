@@ -4,6 +4,7 @@ import Dashboard from "./Dashboard";
 import TakeTest from "./TakeTest";
 import SharedWorkspace from "./Shared";
 import Settings from "./Settings";
+import TestStats from "./TestStats";
 
 // A simple 404 component
 function NotFound() {
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard/>}/>
         <Route path="*" element={<NotFound />} />
         <Route path="/taketest" element={<TakeTest/>}/>
+          <Route path="/teststats" element={<TestStats/>}/>
         <Route path="/shared/:shared_workspace_id" element={<SharedWorkspace />} />
         <Route path = "/settings" element={<Settings/>}/>
       </Routes>

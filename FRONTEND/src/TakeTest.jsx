@@ -27,7 +27,7 @@ import { auth } from "../firebase";
 export default function TakeTest() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const subject = searchParams.get("subject") || "Computer Science"; 
+  const subject = searchParams.get("subject") || "Computer Science";
 
   const [isLoadingTest, setIsLoadingTest] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,9 +36,9 @@ export default function TakeTest() {
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  
+
   // Track reasoning text
-  const [answers, setAnswers] = useState({}); 
+  const [answers, setAnswers] = useState({});
   // Track MCQ selections
   const [selectedOptions, setSelectedOptions] = useState({});
 
@@ -76,8 +76,8 @@ export default function TakeTest() {
       : "bg-red-50 border-red-200 text-red-700",
     divider: isDark ? "border-[#2A2E3A]" : "border-gray-100",
     toggleTrack: isDark ? "bg-purple-600" : "bg-gray-300",
-    optionUnselected: isDark 
-      ? "border-[#2A2E3A] hover:bg-[#2A2E3A]/40 text-gray-300" 
+    optionUnselected: isDark
+      ? "border-[#2A2E3A] hover:bg-[#2A2E3A]/40 text-gray-300"
       : "border-gray-200 hover:bg-gray-50 text-gray-700",
     optionSelected: isDark
       ? "border-purple-500 bg-purple-500/20 text-purple-100"
@@ -92,9 +92,8 @@ export default function TakeTest() {
       className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors duration-300 ${theme.toggleTrack} ${className}`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 h-7 w-7 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 ${
-          isDark ? "translate-x-6" : "translate-x-0"
-        }`}
+        className={`absolute top-0.5 left-0.5 h-7 w-7 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 ${isDark ? "translate-x-6" : "translate-x-0"
+          }`}
       >
         {isDark ? (
           <Moon size={14} className="text-purple-600" />
@@ -206,7 +205,7 @@ export default function TakeTest() {
       } else {
         throw new Error(res.data.error || "Grading failed on server.");
       }
-      
+
     } catch (error) {
       console.error("Submission failed:", error);
       setErrorMessage(error.message || "Failed to submit test.");
@@ -263,9 +262,8 @@ export default function TakeTest() {
         </p>
 
         <div
-          className={`mt-6 flex items-center gap-3 px-5 py-3 rounded-2xl border max-w-md ${
-            isDark ? "bg-purple-500/10 border-purple-500/30" : "bg-purple-50 border-purple-200"
-          }`}
+          className={`mt-6 flex items-center gap-3 px-5 py-3 rounded-2xl border max-w-md ${isDark ? "bg-purple-500/10 border-purple-500/30" : "bg-purple-50 border-purple-200"
+            }`}
         >
           <Coffee size={20} className="text-purple-500 shrink-0" />
           <p className={`text-sm ${isDark ? "text-purple-200" : "text-purple-800"}`}>
@@ -275,10 +273,10 @@ export default function TakeTest() {
         </div>
 
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/teststats")}
           className={`mt-8 px-6 py-3 font-medium rounded-xl transition-colors ${theme.darkBtn}`}
         >
-          Return to Dashboard
+          See Previous Test Stats
         </button>
       </div>
     );
@@ -287,14 +285,14 @@ export default function TakeTest() {
   // --- UI: Active Test Interface ---
   const currentQ = questions[currentIndex] || {};
   const progressPercentage = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
-  
-  const answeredCount = questions.filter((_, idx) => 
+
+  const answeredCount = questions.filter((_, idx) =>
     selectedOptions[idx] || (answers[idx] && answers[idx].trim().length > 0)
   ).length;
 
   return (
     <div className={`h-screen overflow-hidden flex flex-col items-center py-6 sm:py-8 px-4 transition-colors duration-300 ${theme.page}`}>
-      
+
       <div className="w-full max-w-5xl shrink-0 mb-6">
         <div className="flex items-center justify-between mb-6">
           <button
@@ -337,7 +335,7 @@ export default function TakeTest() {
       )}
 
       <div className={`w-full max-w-5xl flex-1 min-h-0 border rounded-2xl flex flex-col shadow-sm transition-colors duration-300 overflow-hidden ${theme.card}`}>
-        
+
         <div className="flex-1 overflow-y-auto p-6 sm:p-10">
           <div className="flex items-start justify-between gap-4 mb-4">
             <h2 className={`text-lg sm:text-xl font-medium leading-relaxed flex items-start ${theme.heading}`}>
@@ -374,9 +372,8 @@ export default function TakeTest() {
                   <button
                     key={optIdx}
                     onClick={() => handleOptionSelect(option)}
-                    className={`w-full flex items-center text-left px-5 py-3.5 border rounded-xl text-sm sm:text-base font-medium transition-all duration-200 ${
-                      isSelected ? theme.optionSelected : theme.optionUnselected
-                    }`}
+                    className={`w-full flex items-center text-left px-5 py-3.5 border rounded-xl text-sm sm:text-base font-medium transition-all duration-200 ${isSelected ? theme.optionSelected : theme.optionUnselected
+                      }`}
                   >
                     <span className="inline-flex w-6 h-6 items-center justify-center rounded-full border border-current mr-3 text-xs shrink-0">
                       {String.fromCharCode(65 + optIdx)}
@@ -386,7 +383,7 @@ export default function TakeTest() {
                         remarkPlugins={[remarkMath, remarkGfm]}
                         rehypePlugins={[rehypeKatex]}
                         components={{
-                          p: ({node, ...props}) => <span {...props} /> // Forces text to stay inline
+                          p: ({ node, ...props }) => <span {...props} /> // Forces text to stay inline
                         }}
                       >
                         {option}
@@ -398,17 +395,23 @@ export default function TakeTest() {
             </div>
           )}
 
-          <div className="mt-4">
-            <p className={`text-sm font-medium mb-3 ${theme.heading}`}>
-              Explain your reasoning (Formulas, steps, or logic):
-            </p>
-            <textarea
-              value={answers[currentIndex] || ""}
-              onChange={(e) => handleAnswerChange(e.target.value)}
-              placeholder="Type your detailed explanation or reasoning here..."
-              className={`w-full h-40 p-4 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all resize-none leading-relaxed ${theme.textarea}`}
-            />
-          </div>
+          {/* ONLY show the text area if a reasoning_prompt exists (is not null) */}
+          {currentQ.reasoning_prompt && (
+            <div className="mt-4">
+              <p className={`text-sm font-medium mb-3 ${theme.heading}`}>
+                {/* Use the custom AI prompt, or fallback to default text */}
+                {typeof currentQ.reasoning_prompt === 'string'
+                  ? currentQ.reasoning_prompt
+                  : "Explain your reasoning (Formulas, steps, or logic):"}
+              </p>
+              <textarea
+                value={answers[currentIndex] || ""}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                placeholder="Type your detailed explanation or reasoning here..."
+                className={`w-full h-40 p-4 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all resize-none leading-relaxed ${theme.textarea}`}
+              />
+            </div>
+          )}
         </div>
 
         <div className={`shrink-0 flex justify-between items-center p-5 sm:px-10 sm:py-6 border-t ${theme.divider}`}>

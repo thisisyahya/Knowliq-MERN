@@ -1,14 +1,12 @@
 const mongoose = require("mongoose");
 
-const pastPaperSchema = new mongoose.Schema({
-  // The user who uploaded or owns this paper
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  
+const paperSchema = new mongoose.Schema({
   // The subject/workspace it belongs to (e.g., "Physics A2")
+   user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
   subject: { 
     type: String, 
     required: true,
@@ -26,7 +24,6 @@ const pastPaperSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
-  
   pageNumber: { 
     type: Number, 
     required: true 
@@ -56,6 +53,6 @@ const pastPaperSchema = new mongoose.Schema({
   }
 });
 
-// The third argument "pastpapers" explicitly sets the MongoDB collection name
-// to match the Vector Search index you created earlier in MongoDB Atlas.
-module.exports = mongoose.model("PastPaper", pastPaperSchema, "pastpapers");
+// The third argument "past_papers" explicitly sets the MongoDB collection name
+// to match the Vector Search index you created earlier.
+module.exports = mongoose.model("Paper", paperSchema, "pastpapers");

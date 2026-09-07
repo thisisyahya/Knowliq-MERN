@@ -53,15 +53,32 @@ router.post("/make-test", verifyLogin, async (req, res) => {
       console.log("in /make-test : safety check failed - test_pending is false");
       return res.status(403).json({ 
         success: "false", 
-        error: "No test is pending for this user." 
+        error: "No test is pending for this workspace." 
+      });
+    }
+
+
+    // --- CHECK FOR EXISTING PENDING TEST ---
+    const existingTest = await Test.findOne({
+      user: user._id,
+      subject: subject.trim(),
+      status: 'pending'
+    });
+
+    if (existingTest) {
+      console.log("in /make-test : existing pending test found, returning from db...");
+      return res.status(200).json({
+        success: "true",
+        test_id: existingTest._id,
+        questions: existingTest.questions,
       });
     }
 
 
 
     // 2. Extract allowed topics and the started_at timestamp
-    const allowedTopics = workspace.currentTopics ? workspace.currentTopics.map((m) => m.topic) : [];
-    const startedAt = workspace.currentTopics?.[0]?.started_at;
+    const allowedTopics = workspace.currentFocus ? workspace.currentFocus.map((m) => m.topic) : [];
+    const startedAt = workspace.currentFocus?.[0]?.started_at;
 
     // 3. Query chats created on or after started_at
     console.log("in /make-test : querying recent chats...");
@@ -173,7 +190,6 @@ const completion = await openai.chat.completions.create({
                 "options", 
                 "correct_option", 
                 "reasoning_prompt", 
-                "evaluation_criteria", 
                 "target_topics"
               ],
               additionalProperties: false
@@ -200,8 +216,8 @@ const completion = await openai.chat.completions.create({
       const outputTokens = completion.usage.completion_tokens || 0;
       const totalTokens = completion.usage.total_tokens || inputTokens + outputTokens;
 
-      const INPUT_RATE_PER_MILLION = 0.15;
-      const OUTPUT_RATE_PER_MILLION = 0.60;
+      const INPUT_RATE_PER_MILLION = 0.20;
+      const OUTPUT_RATE_PER_MILLION = 1.20;
 
       const estimatedInputCost = (inputTokens / 1_000_000) * INPUT_RATE_PER_MILLION;
       const estimatedOutputCost = (outputTokens / 1_000_000) * OUTPUT_RATE_PER_MILLION;
@@ -219,9 +235,7 @@ const completion = await openai.chat.completions.create({
     const parsedResponse = JSON.parse(completion.choices[0].message.content);
     console.log(`in /make-test : successfully generated ${parsedResponse.questions.length} questions.`);
 
-    // Remove any previous abandoned pending tests for this user/subject to avoid conflicts
-    await Test.deleteMany({ user: user._id, subject: subject.trim(), status: 'pending' });
-
+  
     // Save the new test to the database
     const newTest = new Test({
       user: user._id,
@@ -248,7 +262,6 @@ const completion = await openai.chat.completions.create({
 
 
 
-
 router.post("/submit-test", verifyLogin, async (req, res) => {
   try {
     console.log("in /submit-test : route hit, grading test...");
@@ -261,30 +274,32 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
       console.log("in /submit-test : validation failed - missing subject");
       return res.status(400).json({ success: "false", error: "Subject is required" });
     }
+
     if (!submissions || !Array.isArray(submissions) || submissions.length === 0) {
       console.log("in /submit-test : validation failed - missing or invalid submissions");
       return res.status(400).json({ success: "false", error: "Submissions array is required" });
     }
 
-    // 2. Fetch User & Workspace
+    // 2. Fetch User
     console.log("in /submit-test : fetching user and workspace...");
     const user = await User.findOne({ uid });
     if (!user) {
       return res.status(404).json({ success: "false", error: "User not found" });
     }
 
+    // 3. Fetch Workspace (Now that we have the user)
+    const workspace = await Workspace.findOne({ owner: user._id, subject: subject.trim() });
+    if (!workspace) {
+      return res.status(404).json({ success: "false", error: "Workspace not found" });
+    }
+
     // --- SAFETY CHECK ---
-    if (user.test_pending !== true) {
+    if (workspace.test_pending !== true) {
       console.log("in /submit-test : safety check failed - test_pending is false");
       return res.status(403).json({ 
         success: "false", 
         error: "No test is pending for this user." 
       });
-    }
-
-    const workspace = await Workspace.findOne({ owner: user._id, subject: subject.trim() });
-    if (!workspace) {
-      return res.status(404).json({ success: "false", error: "Workspace not found" });
     }
 
     // FETCH THE PENDING TEST FROM DB
@@ -293,21 +308,45 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
       return res.status(404).json({ success: "false", error: "No pending test found to submit." });
     }
 
-    // 3. Extract exact active subtopics (since user.currentTopics stores subtopic names)
-    const activeSubtopics = user.currentTopics ? user.currentTopics.map((m) => m.topic) : [];
+    // 4. Extract exact active subtopics
+    const activeSubtopics = workspace.currentFocus ? workspace.currentFocus.map((m) => m.topic) : [];
     
-    // 4. Combine Questions with Student Submissions for the AI context
+   
+    // 5. Combine Questions with Student Submissions for the AI context
+    const sanitizedSubmissions = []; // We will use this in step 9
+
     const testAndSubmissions = pendingTest.questions.map((q) => {
       const studentSub = submissions.find((s) => s.question_id === q.question_id);
+      
+      let finalAnswer = "NO ANSWER PROVIDED";
+
+      if (studentSub) {
+        finalAnswer = studentSub.answer;
+        
+        // --- SECURITY CHECK ---
+        // If there is no reasoning prompt, but the frontend somehow sent reasoning,
+        // strip everything after "\nReasoning:" 
+        if (!q.reasoning_prompt && finalAnswer.includes("\nReasoning:")) {
+          finalAnswer = finalAnswer.split("\nReasoning:")[0].trim();
+        }
+      }
+
+      // Save the sanitized answer for step 9
+      sanitizedSubmissions.push({
+        question_id: q.question_id,
+        answer_text: finalAnswer
+      });
+
       return {
         question_id: q.question_id,
         question_text: q.text,
         options: q.options,
-        correct_option: q.correct_option, // Ground truth for the AI to grade against
+        correct_option: q.correct_option, 
         target_topics: q.target_topics,
-        student_answer: studentSub ? studentSub.answer : "NO ANSWER PROVIDED"
+        student_answer: finalAnswer
       };
     });
+
 
     const evaluationPayload = JSON.stringify(testAndSubmissions, null, 2);
 
@@ -325,7 +364,7 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
 4. Output the exact "subtopic_name" STRICTLY chosen from the ALLOWED SUBTOPICS list provided. Do NOT invent or alter names.
 5. Return ONLY a valid JSON object matching the strict schema.`;
 
-    // 5. Call OpenAI (gpt-4o-mini) with Structured Outputs
+    // 6. Call OpenAI (gpt-4o-mini)
     console.log("in /submit-test : sending request to OpenAI (gpt-4o-mini) for grading...");
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -376,7 +415,9 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
       ]
     });
 
-    // 6. Token & Cost Logging
+
+
+    // 6.5. Token & Cost Logging (Restored)
     if (completion.usage) {
       const inputTokens = completion.usage.prompt_tokens || 0;
       const outputTokens = completion.usage.completion_tokens || 0;
@@ -400,78 +441,63 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
     // 7. Parse AI Response
     const parsedResponse = JSON.parse(completion.choices[0].message.content);
     const updates = parsedResponse.updated_subtopics || [];
-    
     console.log(`in /submit-test : AI evaluated ${updates.length} subtopics.`);
 
-    // 8. Update MongoDB Workspace Document Manually
+    // 8. Update MongoDB Workspace Document In-Memory
     if (updates.length > 0) {
-      console.log("in /submit-test : manually scanning workspace to update subtopic retention status...");
+      console.log("in /submit-test : scanning workspace to update subtopic retention status...");
       
       let isModified = false;
 
       updates.forEach((update) => {
-        // Robust Matching: Trim and lowercase to prevent minor string mismatches
         const targetSubtopic = update.subtopic_name.trim().toLowerCase();
 
-        // Iterate through all parent topics in the workspace
         for (const topicDoc of workspace.detailedTopics) {
           if (Array.isArray(topicDoc.subtopics)) {
-            // Check if the subtopic exists under this parent topic
             const subtopicDoc = topicDoc.subtopics.find(
               st => st.name.trim().toLowerCase() === targetSubtopic
             );
             
             if (subtopicDoc) {
-              // Found it! Apply the updates
               subtopicDoc.retention = update.retention;
               subtopicDoc.remarks = update.remarks;
               subtopicDoc.last_learned_at = new Date();
               isModified = true;
-              
-              // Break out of the inner loop since we found and updated the target subtopic
               break; 
             }
           }
         }
       });
 
-      // Save the document if changes were made
       if (isModified) {
-        workspace.markModified('detailedTopics'); // Explicitly tell mongoose the nested array changed
-        await workspace.save();
-        console.log("in /submit-test : workspace scores successfully updated and saved.");
-      } else {
-        console.log("in /submit-test : no matching subtopics found in the workspace to update.");
+        workspace.markModified('detailedTopics');
       }
     }
 
-    // 9. Update and save the actual Test document
+    // 9. Update the Test Document
+   // 9. Update the Test Document
     if (updates.length > 0) {
       console.log("in /submit-test : saving user answers and AI evaluations to Test document...");
       
-      // Format submissions to match answerSchema
-      pendingTest.answers = submissions.map(sub => ({
-        question_id: sub.question_id,
-        answer_text: sub.answer || ""
-      }));
+      // USE THE SANITIZED ANSWERS CREATED IN STEP 5
+      pendingTest.answers = sanitizedSubmissions;
 
-      // Format AI updates to match evaluationSchema
       pendingTest.evaluations = updates.map(up => ({
         subtopic_name: up.subtopic_name,
         remarks: up.remarks,
         retention: up.retention
       }));
 
-      // Mark test as graded
       pendingTest.status = 'graded';
       await pendingTest.save();
-      console.log("in /submit-test : Test document saved successfully.");
     }
 
-    // 10. Clear the pending test flag from the user
-    user.test_pending = false;
-    user.currentTopics = [];
-    await user.save();
+    // 10. Clear pending flags and run a SINGLE save on the workspace
+    workspace.test_pending = false;
+    workspace.currentFocus = [];
+    workspace.currentFocusSummary = "";
+    await workspace.save();
+    console.log("in /submit-test : workspace state updated and saved successfully.");
 
     // 11. Return Response
     return res.status(200).json({
@@ -489,5 +515,95 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
   }
 });
 
+
+
+
+
+
+// GET /test-stats - Fetch user test statistics & history
+router.get("/test-stats", verifyLogin, async (req, res) => {
+  try {
+    const { uid } = req;
+    const user = await User.findOne({ uid });
+    
+    if (!user) {
+      return res.status(404).json({ success: "false", error: "User not found" });
+    }
+
+    // Fetch all completed/graded tests for this user, newest first
+    const completedTests = await Test.find({ user: user._id, status: "graded" })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let overallGreen = 0;
+    let overallYellow = 0;
+    let overallRed = 0;
+
+    // Group tests by workspace (subject)
+    const workspacesMap = {};
+
+    completedTests.forEach((test) => {
+      const subject = test.subject || "Unknown Subject";
+
+      // Initialize workspace entry if it doesn't exist
+      if (!workspacesMap[subject]) {
+        workspacesMap[subject] = {
+          subject,
+          totalTestsTaken: 0,
+          retentionSummary: { green: 0, yellow: 0, red: 0 },
+          recentHistory: [],
+        };
+      }
+
+      let testGreen = 0, testYellow = 0, testRed = 0;
+
+      (test.evaluations || []).forEach((ev) => {
+        if (ev.retention === "green") testGreen++;
+        else if (ev.retention === "yellow") testYellow++;
+        else if (ev.retention === "red") testRed++;
+      });
+
+      // Add to Workspace Specific Stats
+      workspacesMap[subject].retentionSummary.green += testGreen;
+      workspacesMap[subject].retentionSummary.yellow += testYellow;
+      workspacesMap[subject].retentionSummary.red += testRed;
+      workspacesMap[subject].totalTestsTaken += 1;
+      
+      workspacesMap[subject].recentHistory.push({
+        test_id: test._id,
+        subject: test.subject,
+        date: test.createdAt,
+        totalQuestions: test.questions?.length || 0,
+        evaluations: test.evaluations || [],
+      });
+
+      // Add to Overall Global Stats
+      overallGreen += testGreen;
+      overallYellow += testYellow;
+      overallRed += testRed;
+    });
+
+    const workspaces = Object.values(workspacesMap);
+
+    return res.status(200).json({
+      success: "true",
+      stats: {
+        overall: {
+          totalTestsTaken: completedTests.length,
+          retentionSummary: {
+            green: overallGreen,
+            yellow: overallYellow,
+            red: overallRed,
+          },
+        },
+        workspaces, // The grouped data array
+      },
+    });
+
+  } catch (error) {
+    console.error("Error in /test-stats :", error);
+    return res.status(500).json({ success: "false", error: "Failed to fetch stats" });
+  }
+});
 
 module.exports = router;
