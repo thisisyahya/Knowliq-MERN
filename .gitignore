@@ -6,10 +6,11 @@
 # =================( SECRETS & ENVIRONMENTS )=================
 .env
 .env.*
-**/ .env
-**/ .env.*
+**/.env
+**/.env.*
 firebase-secrets.json
 **/firebase-secrets.json
+FRONTEND/ideas.txt
 
 # =================( BUILD OUTPUTS )=================
 **/dist/
