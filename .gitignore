@@ -1,0 +1,51 @@
+# =================( DEPENDENCIES )=================
+**/node_modules/
+/.pnp
+.pnp.js
+
+# =================( SECRETS & ENVIRONMENTS )=================
+.env
+.env.*
+**/ .env
+**/ .env.*
+firebase-secrets.json
+**/firebase-secrets.json
+
+# =================( BUILD OUTPUTS )=================
+**/dist/
+**/build/
+**/.next/
+**/.vite/
+
+# =================( LOGS & DEBUGGING )=================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Coverage directories
+coverage
+*.lcov
+.nyc_output
+
+# =================( OS FILES )=================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# =================( IDE & EDITOR FILES )=================
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
