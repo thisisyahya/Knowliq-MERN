@@ -1,0 +1,307 @@
+@import "tailwindcss";
+
+@theme {
+--font-poppins: "Poppins", sans-serif;
+--font-lato: "Lato", sans-serif;
+--font-roboto: "Roboto", sans-serif;
+}
+
+@layer base {
+*,
+::before,
+::after {
+box-sizing: border-box !important;
+}
+}
+
+/* ========================================================
+MASTER MARKDOWN STYLES
+======================================================== */
+
+/* ---------------- TABLES ---------------- */
+
+.prose table,
+.markdown-body table {
+width: 100% !important;
+border-collapse: collapse !important;
+margin: 1.5rem 0 !important;
+}
+
+.prose th,
+.prose td,
+.markdown-body th,
+.markdown-body td {
+border: 1px solid #d1d5db !important;
+padding: 12px 16px !important;
+text-align: left;
+line-height: 1.6;
+}
+
+.prose thead th,
+.markdown-body thead th {
+background-color: #f3f4f6 !important;
+font-weight: 700 !important;
+color: #374151 !important;
+}
+
+.prose tbody tr:nth-child(even),
+.markdown-body tbody tr:nth-child(even) {
+background-color: #f8fafc !important;
+}
+
+/* ---------------- LISTS ---------------- */
+
+.prose ul,
+.markdown-body ul {
+list-style-type: disc !important;
+padding-left: 1.5rem !important;
+margin-top: 0.75rem !important;
+margin-bottom: 0.75rem !important;
+}
+
+.prose ol,
+.markdown-body ol {
+list-style-type: decimal !important;
+padding-left: 1.5rem !important;
+margin-top: 0.75rem !important;
+margin-bottom: 0.75rem !important;
+}
+
+.prose li,
+.markdown-body li {
+display: list-item !important;
+margin-bottom: 0.75rem !important;
+line-height: 1.6;
+}
+
+/* Nested lists */
+
+.prose ul ul,
+.prose ol ul,
+.markdown-body ul ul,
+.markdown-body ol ul {
+list-style-type: circle !important;
+margin-top: 0.25rem !important;
+margin-bottom: 0.25rem !important;
+}
+
+/* ---------------- PARAGRAPHS ---------------- */
+
+.markdown-body p {
+margin-bottom: 1rem;
+}
+
+/* ---------------- BOLD ---------------- */
+
+.prose strong,
+.prose b,
+.markdown-body strong,
+.markdown-body b {
+font-weight: 700 !important;
+color: #111827 !important;
+}
+
+/* ---------------- HEADINGS ---------------- */
+
+.prose h1,
+.markdown-body h1 {
+font-size: 1.875rem !important;
+font-weight: 800 !important;
+margin-top: 2rem !important;
+margin-bottom: 1rem !important;
+color: #111827 !important;
+line-height: 1.2 !important;
+}
+
+.prose h2,
+.markdown-body h2 {
+font-size: 1.5rem !important;
+font-weight: 700 !important;
+margin-top: 1.75rem !important;
+margin-bottom: 0.75rem !important;
+color: #1f2937 !important;
+line-height: 1.3 !important;
+}
+
+.prose h3,
+.markdown-body h3 {
+font-size: 1.25rem !important;
+font-weight: 600 !important;
+margin-top: 1.5rem !important;
+margin-bottom: 0.75rem !important;
+color: #374151 !important;
+line-height: 1.3 !important;
+}
+
+.prose h4,
+.prose h5,
+.prose h6,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+font-size: 1.125rem !important;
+font-weight: 600 !important;
+margin-top: 1.25rem !important;
+margin-bottom: 0.5rem !important;
+color: #4b5563 !important;
+}
+
+/* ========================================================
+KATEX
+======================================================== */
+
+/*
+IMPORTANT:
+Tailwind's preflight sets box-sizing globally.
+KaTeX relies on content-box sizing for its internal
+layout, especially fractions, radicals and delimiters.
+*/
+
+.katex,
+.katex * {
+box-sizing: content-box !important;
+}
+
+/* Restore borders for \boxed{} and \fcolorbox{} */
+
+.katex .fbox,
+.katex .fcolorbox {
+border: 1px solid currentColor !important;
+box-sizing: border-box !important;
+}
+
+/*
+DO NOT apply border-color to every KaTeX element.
+KaTeX uses borders internally for mathematical layout.
+*/
+
+/* ---------------- DISPLAY EQUATIONS ---------------- */
+
+.prose .katex-display {
+display: block !important;
+width: 100% !important;
+
+margin: 1.25rem 0 !important;
+padding: 0.25rem 0 !important;
+
+overflow-x: auto !important;
+overflow-y: hidden !important;
+
+text-align: center !important;
+}
+
+/*
+Keep the actual equation on one line internally.
+The parent handles horizontal scrolling for long equations.
+*/
+
+.prose .katex-display > .katex {
+display: inline-block !important;
+
+white-space: nowrap !important;
+
+max-width: none !important;
+}
+
+/* ---------------- INLINE EQUATIONS ---------------- */
+
+.prose .katex {
+line-height: 1.4 !important;
+}
+
+/* ---------------- KATEX ERROR ---------------- */
+
+.katex-error {
+color: inherit !important;
+background-color: #f3f4f6 !important;
+
+padding: 0.2rem 0.4rem;
+
+border-radius: 0.25rem;
+
+font-family: monospace;
+}
+
+/* ========================================================
+CODE BLOCKS
+======================================================== */
+
+.prose pre,
+.markdown-body pre {
+overflow-x: auto !important;
+max-width: 100% !important;
+}
+
+/* ========================================================
+DARK MODE
+======================================================== */
+
+/* ---------------- TABLES ---------------- */
+
+.prose-invert th,
+.prose-invert td {
+border-color: #3a1b5c !important;
+color: #e2e8f0 !important;
+}
+
+.prose-invert thead th {
+background-color: #2a134a !important;
+color: #f8fafc !important;
+}
+
+.prose-invert tbody tr {
+background-color: transparent !important;
+}
+
+.prose-invert tbody tr:nth-child(even) {
+background-color: #1c0831 !important;
+}
+
+/* ---------------- BOLD ---------------- */
+
+.prose-invert strong,
+.prose-invert b {
+color: #ffffff !important;
+}
+
+/* ---------------- HEADINGS ---------------- */
+
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert h4,
+.prose-invert h5,
+.prose-invert h6 {
+color: #ffffff !important;
+}
+
+/* ---------------- KATEX DARK MODE ---------------- */
+
+.prose-invert .katex {
+color: inherit !important;
+}
+
+.prose-invert .katex-error {
+background-color: #220938 !important;
+color: #e5e7eb !important;
+}
+
+/* ========================================================
+MARKDOWN BODY FALLBACK
+======================================================== */
+
+.markdown-body ol {
+list-style-type: decimal;
+padding-left: 1.5rem;
+margin-bottom: 1rem;
+}
+
+.markdown-body ul {
+list-style-type: disc;
+padding-left: 1.5rem;
+margin-bottom: 1rem;
+}
+
+.markdown-body strong {
+font-weight: 600;
+}
