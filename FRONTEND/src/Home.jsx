@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate ,Link} from "react-router-dom";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
 import axios from "axios";
@@ -25,12 +25,12 @@ import {
 
 // --- FIREBASE CLIENT CONFIG ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAfP84dAr-Z_KN3qFiI0JpF860IZrf3MAU",
-  authDomain: "cipher-e73e1.firebaseapp.com",
-  projectId: "cipher-e73e1",
-  storageBucket: "cipher-e73e1.appspot.com",
-  messagingSenderId: "530003079642",
-  appId: "1:530003079642:web:3aa2c60b064aaf406cd0e3",
+   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 let app;
@@ -245,7 +245,14 @@ export default function Home() {
       {/* ---------------- NAV ---------------- */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-neutral-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2 group cursor-pointer">
+          
+          {/* --- ADDED LOGO HERE --- */}
+          <div className="flex items-center gap-2 sm:gap-3 group cursor-pointer">
+            <img 
+              src="/light-favicon.png" 
+              alt="knowLiq logo" 
+              className="w-7 h-7 sm:w-8 sm:h-8 object-contain transition-transform group-hover:scale-105" 
+            />
             <span className="text-xl sm:text-2xl font-extrabold tracking-tight">knowLiq</span>
             <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-indigo-600 mt-1 group-hover:scale-125 transition-transform" />
           </div>
@@ -258,13 +265,22 @@ export default function Home() {
             ))}
           </nav>
 
-          <button
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="hidden md:inline-flex text-sm font-semibold bg-indigo-600 text-white px-6 py-2.5 rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 disabled:opacity-50"
-          >
-            {loading ? "Authenticating..." : "Start your program"}
-          </button>
+          {/* --- WRAPPED IN A FLEX DIV TO ADD 'HOW IT WORKS' NEXT TO LOGIN --- */}
+          <div className="hidden md:flex items-center gap-5">
+            <Link 
+              to="/how-it-works" 
+              className="text-sm font-medium text-neutral-600 hover:text-indigo-600 transition-colors"
+            >
+              How it works
+            </Link>
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="inline-flex text-sm font-semibold bg-indigo-600 text-white px-6 py-2.5 rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              {loading ? "Authenticating..." : "Start your program"}
+            </button>
+          </div>
 
           {/* Mobile hamburger */}
           <button
@@ -276,6 +292,19 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+{/* --- ADD THIS WARNING BANNER RIGHT HERE --- */}
+      <div className="max-w-3xl bg-amber-50 border-b border-amber-200 py-3 px-4 mx-auto mt-10">
+        <div className="max-w-7xl mx-auto flex flex-col  items-center justify-center gap-1 sm:gap-2 text-center text-sm text-amber-800">
+          <span>
+            <strong>⚠️ Note:</strong> This webapp is on a free version, so starting the backend would take ~2 minutes. Your patience is appreciated!
+          </span>
+          <span>
+            See how it works in detail <Link to="/how-it-works" className="font-bold underline hover:text-amber-900">here</Link>.
+          </span>
+        </div>
+      </div>
+      {/* ------------------------------------------ */}
 
       {/* ---------------- MOBILE NAV OVERLAY ---------------- */}
       {mobileNavOpen && (
@@ -345,13 +374,14 @@ export default function Home() {
               {loading ? "Connecting..." : "Upload a past paper"}
               <ArrowRight size={18} strokeWidth={2} />
             </button>
-            <a
-              href="#engine"
+             <Link 
+              to="/how-it-works" 
               className="inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-3.5 sm:py-4 rounded-full border-2 border-neutral-200 text-neutral-700 hover:border-indigo-600 hover:text-indigo-600 transition-colors"
             >
-              See how testing works
-            </a>
+              How it Works
+            </Link>
           </div>
+          
         </div>
 
         {/* Hero Concept Graph */}
@@ -451,11 +481,10 @@ export default function Home() {
                     <button
                       key={key}
                       onClick={() => setActiveRetention(key)}
-                      className={`w-full text-left p-4 sm:p-5 rounded-2xl border-2 transition-all duration-200 flex items-start gap-3.5 sm:gap-4 ${
-                        isActive
+                      className={`w-full text-left p-4 sm:p-5 rounded-2xl border-2 transition-all duration-200 flex items-start gap-3.5 sm:gap-4 ${isActive
                           ? `bg-white shadow-lg ${data.borderColor}`
                           : `bg-neutral-50 border-transparent ${data.bgHover} hover:border-neutral-200`
-                      }`}
+                        }`}
                     >
                       <div className={`mt-1 flex-shrink-0 w-3 h-3 rounded-full ${data.dot} ${isActive ? `ring-4 ring-opacity-20 ${data.ring}` : ''}`} />
                       <div className="min-w-0">
