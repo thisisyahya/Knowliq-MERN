@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, Trash, Send, Loader2, LogOut, ChevronDown, Copy, Check, Sun, Moon, Menu, X, BookOpen, Share, Share2, Settings } from "lucide-react";
+import { PlusCircle, Trash, Send, Loader2, LogOut, ChevronDown, Copy, Check, Sun, Moon, Menu, X, BookOpen, Share, Share2, Settings, BarChart2 } from "lucide-react";
 import SyllabusOverlay from "./components/SyllabusOverlay"; // adjust path as needed
 import CreateWorkspace from "./components/CreateWorkspace";
 
@@ -110,29 +110,31 @@ const MemoizedChatBubble = memo(({ msg, isDarkMode }) => {
     if (!text) return "";
     let formatted = text;
 
-    // 1. Fix the "ext" space eating bug
-    formatted = formatted.replace(/(?:\\text|\text|ext|\t ext)\s*\{([^}]+)\}/g, '\\text{$1}');
+    // 1. RECOVER CORRUPTED ESCAPE CHARACTERS
+    formatted = formatted.replace(/\f/g, '\\f'); // Restores \frac, \fcolorbox
+    formatted = formatted.replace(/\t/g, '\\t'); // Restores \text, \tau, \theta
+    formatted = formatted.replace(/\v/g, '\\v'); // Restores \vec, \varepsilon
+    
+    // FIXED: [\b] targets the backspace control character, NOT word boundaries
+    formatted = formatted.replace(/[\b]/g, '\\b'); 
 
-    // 2. FIX THE SQUEEZED MATH
-    // KaTeX squashes fractions/roots when it thinks math is "inline" (\textstyle).
-    // We inject \displaystyle into every format to force full-size expansion.
+    // Recover characters that share escape sequences with newlines/returns
+    formatted = formatted.replace(/\n(?=u|abla|eq|ormalsize)/g, '\\n'); // Restores \nu, \nabla, \neq
+    formatted = formatted.replace(/\r(?=ho|angle|ightarrow)/g, '\\r'); // Restores \rho, \rightarrow
 
-    // Convert \[ ... \] to block math
+    // 2. FIX THE SQUEEZED MATH 
     formatted = formatted.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => {
       return `$$\\displaystyle ${math}$$`;
     });
 
-    // Convert \( ... \) to inline math WITH full sizing
     formatted = formatted.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => {
       return `$\\displaystyle ${math}$`;
     });
 
-    // Catch native $$...$$ and inject if missing
     formatted = formatted.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => {
       return math.includes('\\displaystyle') ? match : `$$\\displaystyle ${math}$$`;
     });
 
-    // Catch native $...$ and inject if missing 
     formatted = formatted.replace(/(^|[^\$])\$([^\$]+)\$(?!\$)/g, (match, prefix, math) => {
       return math.includes('\\displaystyle') ? match : `${prefix}$\\displaystyle ${math}$`;
     });
@@ -711,9 +713,11 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* User Profile & Settings Footer */}
+      {/* User Profile & Settings Footer */}
         <div className={`w-full p-4 mt-auto border-t shrink-0 ${isDarkMode ? 'border-[#2C1245]' : 'border-gray-100'}`}>
           <div className="flex items-center justify-between w-full px-1">
+            
+            {/* User Info */}
             <div className="flex items-center gap-3 overflow-hidden">
               <img
                 src={userProfile.avatar}
@@ -725,17 +729,38 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Settings Button */}
-            <button
-              onClick={() => navigate('/settings')}
-              className={`p-2 rounded-lg transition-colors shrink-0 flex items-center justify-center ${isDarkMode ? 'text-gray-400 hover:text-purple-400 hover:bg-[#220938]' : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'}`}
-              title="Settings"
-            >
-              <Settings size={18} />
-            </button>
+            {/* Action Buttons Container */}
+            <div className="flex items-center gap-1 shrink-0">
+              
+              {/* Test Stats Button (Prominent) */}
+              <button
+                onClick={() => navigate('/teststats')}
+                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                  isDarkMode 
+                    ? 'text-purple-400 hover:bg-[#220938] hover:text-purple-300' 
+                    : 'text-purple-600 hover:bg-purple-100 hover:text-purple-700'
+                }`}
+                title="Test Statistics"
+              >
+                <BarChart2 size={18} />
+              </button>
+
+              {/* Settings Button (Muted) */}
+              <button
+                onClick={() => navigate('/settings')}
+                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:text-purple-400 hover:bg-[#220938]' 
+                    : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+                }`}
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
+            </div>
+            
           </div>
         </div>
-
       </div>
 
       {/* MAIN CHAT AREA */}

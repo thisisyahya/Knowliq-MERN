@@ -276,7 +276,7 @@ ${longTermContext}
 1. NO INFO-DUMPING: Never explain everything at once. Focus on ONLY ONE concept at a time.
 2. QUESTIONING & TRANSITIONS: Do NOT ask obvious or forced questions (unless in Socratic mode). Always end your response with a clear guiding statement to smoothly transition the user to the next logical subtopic from your CURRENT SESSION CONTEXT list.
 3. ADAPTABILITY: If they are confused, re-explain simply. If they master it, transition to the next logical concept.
-4. FORMATTING: Use standard LaTeX for math ($$ for display, $ for inline). Keep general text formatting light. Use headings and subheadings. If a response contains multiple concepts, summarize them in a Markdown Table at the end.
+4. MATH FORMATTING (CRITICAL): If you include any formulas, variables, or equations in your remarks, they MUST be wrapped in LaTeX delimiters. Use $ for inline math (e.g., $\sigma_m$) and $$ for block math. Never leave raw LaTeX commands naked in the text.
 5. LANGUAGE CONSISTENCY: Always follow ${preferredLang} unless the user explicitly requests another language in the current message. Historical conversation context must never override the ${preferredLang} language.
 
 ### ROUTING & FLAG RULES:
@@ -348,41 +348,59 @@ async function callMainTutor(user, workspace, subject, query, longTermContext, c
   };
 }
 
+
+
 async function updateWorkspaceState(user, workspace, currentFocus, aiData, subject) {
+  let isTestPending = Boolean(aiData.test_pending);
+
+  // 1. Prepare our bulk update payload
+  const updatePayload = {
+    $set: {
+      currentFocus: currentFocus || [],
+      test_pending: isTestPending || workspace.test_pending, 
+      currentFocusSummary: workspace.currentFocusSummary
+    }
+  };
+
+  const arrayFilters = [];
+
+  // 2. If a subtopic was taught, increment counter and prep nested date update
   if (aiData.current_taught_subtopic) {
     const taughtName = aiData.current_taught_subtopic.trim();
     const matchedIndex = currentFocus.findIndex(t => t.topic && t.topic.trim().toLowerCase() === taughtName.toLowerCase());
 
     if (matchedIndex !== -1) {
+      // Update the counter in our array (saved via $set.currentFocus above)
       currentFocus[matchedIndex].counter = (currentFocus[matchedIndex].counter || 0) + 1;
-      await Workspace.updateOne(
-        { _id: workspace._id, "detailedTopics.subtopics.name": currentFocus[matchedIndex].topic },
-        { $set: { "detailedTopics.$[].subtopics.$[sub].last_learned_at": new Date() } },
-        { arrayFilters: [{ "sub.name": currentFocus[matchedIndex].topic }] }
-      );
+
+      // Add the nested date update to our $set
+      updatePayload.$set["detailedTopics.$[].subtopics.$[sub].last_learned_at"] = new Date();
+      arrayFilters.push({ "sub.name": currentFocus[matchedIndex].topic });
     }
   }
 
-  let isTestPending = Boolean(aiData.test_pending);
   try {
-    if (isTestPending) {
-      console.log("in /chat : test_pending flag is true. Locking user chat...");
-      workspace.test_pending = true;
-      // We don't overwrite finalAnswer here; the controller handles the locked state payload on the NEXT request.
+    // 3. Execute a SINGLE atomic database update
+    if (arrayFilters.length > 0) {
+      await Workspace.updateOne({ _id: workspace._id }, updatePayload, { arrayFilters });
+    } else {
+      await Workspace.updateOne({ _id: workspace._id }, updatePayload);
     }
 
-    workspace.currentFocus = currentFocus || [];
-    workspace.markModified("currentFocus");
-    workspace.markModified("currentFocusSummary");
+    // Keep the local memory object in sync just in case it's used elsewhere in the request
+    workspace.currentFocus = currentFocus;
+    if (isTestPending) workspace.test_pending = true;
 
-    await workspace.save();
+    // Save the user (separate document, so this is perfectly fine)
     await user.save();
   } catch (saveError) {
-    console.error("in /chat : Failed to update User DB:", saveError.message);
+    console.error("in /chat : Failed to update User/Workspace DB:", saveError.message);
   }
 
   return isTestPending;
 }
+
+
 
 async function saveChatHistory(userId, subject, query, finalAnswer, queryVector) {
   try {

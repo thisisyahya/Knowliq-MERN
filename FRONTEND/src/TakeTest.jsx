@@ -174,6 +174,29 @@ export default function TakeTest() {
     }
   };
 
+
+  const formatLaTeX = (text) => {
+    if (!text) return "";
+    let formatted = String(text);
+
+    // 1. Recover corrupted escapes (fixes missing \f, \t, \b)
+    formatted = formatted.replace(/\f/g, '\\f');
+    formatted = formatted.replace(/\t/g, '\\t');
+    formatted = formatted.replace(/\v/g, '\\v');
+    formatted = formatted.replace(/[\b]/g, '\\b');
+    formatted = formatted.replace(/\n(?=u|abla|eq|ormalsize)/g, '\\n');
+    formatted = formatted.replace(/\r(?=ho|angle|ightarrow)/g, '\\r');
+
+    // 2. Fix Squeezed Math and force display style
+    formatted = formatted.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => `$$\\displaystyle ${math}$$`);
+    formatted = formatted.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => `$\\displaystyle ${math}$`);
+    formatted = formatted.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => math.includes('\\displaystyle') ? match : `$$\\displaystyle ${math}$$`);
+    formatted = formatted.replace(/(^|[^\$])\$([^\$]+)\$(?!\$)/g, (match, prefix, math) => math.includes('\\displaystyle') ? match : `${prefix}$\\displaystyle ${math}$`);
+
+    return formatted;
+  };
+
+
   // 2. Submit test questions and answers to backend (REAL BACKEND LOGIC)
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -290,6 +313,7 @@ export default function TakeTest() {
     selectedOptions[idx] || (answers[idx] && answers[idx].trim().length > 0)
   ).length;
 
+ 
   return (
     <div className={`h-screen overflow-hidden flex flex-col items-center py-6 sm:py-8 px-4 transition-colors duration-300 ${theme.page}`}>
 
@@ -343,9 +367,15 @@ export default function TakeTest() {
               <div className="inline-block flex-1 overflow-hidden">
                 <ReactMarkdown
                   remarkPlugins={[remarkMath, remarkGfm]}
-                  rehypePlugins={[rehypeKatex]}
+                  rehypePlugins={[
+                    [rehypeKatex, { strict: false, throwOnError: false }]
+                  ]}
+                  components={{
+                    // SAFELY extract children instead of spreading props to stop React crashes
+                    p: ({ children }) => <span>{children}</span> 
+                  }}
                 >
-                  {currentQ.text || ""}
+                  {formatLaTeX(currentQ.text)}
                 </ReactMarkdown>
               </div>
             </h2>
@@ -364,7 +394,8 @@ export default function TakeTest() {
             </div>
           )}
 
-          {currentQ.options && currentQ.options.length > 0 && (
+          {/* SAFETY CHECK: Ensure options is actually an array before mapping! */}
+          {Array.isArray(currentQ.options) && currentQ.options.length > 0 && (
             <div className="flex flex-col gap-3 mb-8">
               {currentQ.options.map((option, optIdx) => {
                 const isSelected = selectedOptions[currentIndex] === option;
@@ -381,12 +412,15 @@ export default function TakeTest() {
                     <div className="inline-block text-left overflow-hidden">
                       <ReactMarkdown
                         remarkPlugins={[remarkMath, remarkGfm]}
-                        rehypePlugins={[rehypeKatex]}
+                        rehypePlugins={[
+                          [rehypeKatex, { strict: false, throwOnError: false }]
+                        ]}
                         components={{
-                          p: ({ node, ...props }) => <span {...props} /> // Forces text to stay inline
+                          // SAFELY extract children here too
+                          p: ({ children }) => <span>{children}</span> 
                         }}
                       >
-                        {option}
+                        {formatLaTeX(option)}
                       </ReactMarkdown>
                     </div>
                   </button>
@@ -398,12 +432,23 @@ export default function TakeTest() {
           {/* ONLY show the text area if a reasoning_prompt exists (is not null) */}
           {currentQ.reasoning_prompt && (
             <div className="mt-4">
-              <p className={`text-sm font-medium mb-3 ${theme.heading}`}>
-                {/* Use the custom AI prompt, or fallback to default text */}
-                {typeof currentQ.reasoning_prompt === 'string'
-                  ? currentQ.reasoning_prompt
-                  : "Explain your reasoning (Formulas, steps, or logic):"}
-              </p>
+              <div className={`text-sm font-medium mb-3 ${theme.heading}`}>
+                {typeof currentQ.reasoning_prompt === 'string' ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath, remarkGfm]}
+                    rehypePlugins={[
+                      [rehypeKatex, { strict: false, throwOnError: false }]
+                    ]}
+                    components={{
+                      p: ({ children }) => <span>{children}</span> 
+                    }}
+                  >
+                    {formatLaTeX(currentQ.reasoning_prompt)}
+                  </ReactMarkdown>
+                ) : (
+                  "Explain your reasoning (Formulas, steps, or logic):"
+                )}
+              </div>
               <textarea
                 value={answers[currentIndex] || ""}
                 onChange={(e) => handleAnswerChange(e.target.value)}

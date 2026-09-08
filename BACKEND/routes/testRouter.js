@@ -139,7 +139,7 @@ DIAGNOSTIC & FORMATTING GUIDELINES:
    - IF the subject/topic is Engineering or heavily Math-based AND the chat history indicates numerical problem-solving: Generate numerical MCQs. Since users cannot easily type complex math, provide the final numerical answers in the 4 multiple-choice options, AND provide a specific "reasoning_prompt" asking them to briefly explain their formula/steps.
    - IF the subject/topic is Theoretical: Skip numerical calculations completely. Generate deep conceptual MCQs. For theoretical MCQs, set the "reasoning_prompt" strictly to null.
 4. DISTRACTORS: All 3 incorrect options must be realistic and reflect common student misconceptions.
-5. LATEX: Format math/science variables strictly using standard LaTeX ($...$).`;
+5. MATH FORMATTING (CRITICAL): ALL equations, variables, and formulas MUST be wrapped in LaTeX delimiters. Use $ for inline math (e.g., $\sigma_m$) and $$ for block equations. NEVER output raw LaTeX commands (like \displaystyle or \frac) in plain text without wrapping them in dollar signs.`
 
 const completion = await openai.chat.completions.create({
   model: "gpt-5.6-luna",
@@ -308,9 +308,17 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
       return res.status(404).json({ success: "false", error: "No pending test found to submit." });
     }
 
-    // 4. Extract exact active subtopics
-    const activeSubtopics = workspace.currentFocus ? workspace.currentFocus.map((m) => m.topic) : [];
-    
+    // 4. Extract exact active subtopics DIRECTLY from the test questions (100% reliable)
+    let activeSubtopics = [];
+    if (pendingTest.questions && pendingTest.questions.length > 0) {
+      pendingTest.questions.forEach(q => {
+        if (Array.isArray(q.target_topics)) {
+          activeSubtopics.push(...q.target_topics);
+        }
+      });
+    }
+    // Remove duplicates
+    activeSubtopics = [...new Set(activeSubtopics)];
    
     // 5. Combine Questions with Student Submissions for the AI context
     const sanitizedSubmissions = []; // We will use this in step 9
@@ -367,7 +375,7 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
     // 6. Call OpenAI (gpt-4o-mini)
     console.log("in /submit-test : sending request to OpenAI (gpt-4o-mini) for grading...");
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.6-luna",
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -474,28 +482,34 @@ router.post("/submit-test", verifyLogin, async (req, res) => {
       }
     }
 
+   
     // 9. Update the Test Document
-   // 9. Update the Test Document
     if (updates.length > 0) {
       console.log("in /submit-test : saving user answers and AI evaluations to Test document...");
       
       // USE THE SANITIZED ANSWERS CREATED IN STEP 5
       pendingTest.answers = sanitizedSubmissions;
 
-      pendingTest.evaluations = updates.map(up => ({
-        subtopic_name: up.subtopic_name,
-        remarks: up.remarks,
-        retention: up.retention
-      }));
+      // FILTER OUT EMPTY SUBTOPIC NAMES to prevent Mongoose validation crashes
+      const validEvaluations = updates
+        .filter(up => up.subtopic_name && up.subtopic_name.trim() !== "")
+        .map(up => ({
+          subtopic_name: up.subtopic_name.trim(),
+          remarks: up.remarks || "Evaluated.",
+          retention: up.retention || "yellow"
+        }));
 
+      pendingTest.evaluations = validEvaluations;
       pendingTest.status = 'graded';
+      
       await pendingTest.save();
     }
+
 
     // 10. Clear pending flags and run a SINGLE save on the workspace
     workspace.test_pending = false;
     workspace.currentFocus = [];
-    workspace.currentFocusSummary = "";
+    workspace.currentFocusSummary = { text: "", counter: 0 };
     await workspace.save();
     console.log("in /submit-test : workspace state updated and saved successfully.");
 
